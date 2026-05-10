@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Base Gas Tracker — Live Gas Prices</title>
+  <meta name="description" content="Real-time gas price tracker for Base L2. Monitor fees, calculate transaction costs, and find the best time to transact.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0a0e1a;
+      --bg-card:      rgba(255,255,255,0.028);
+      --bg-card-h:    rgba(255,255,255,0.042);
+      --border:       rgba(255,255,255,0.08);
+      --border-a:     rgba(0,82,255,0.28);
+      --accent:       #0052FF;
+      --accent-dim:   rgba(0,82,255,0.12);
+      --text:         #e8eaed;
+      --muted:        #9ca3af;
+      --dim:          #4b5563;
+      --green:        #22c55e;
+      --yellow:       #f59e0b;
+      --red:          #ef4444;
+      --r:            16px;
+      --rs:           10px;
+      --tr:           0.18s ease;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+
+    /* Subtle top glow */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      height: 60vh;
+      background: radial-gradient(ellipse 80% 40% at 50% -10%, rgba(0,82,255,0.1) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      background: rgba(10,14,26,0.85);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo { width: 34px; height: 34px; flex-shrink: 0; }
+
+    .brand-text h1 {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      line-height: 1.2;
+    }
+
+    .brand-text p {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--muted);
+      transition: all var(--tr);
+      white-space: nowrap;
+    }
+
+    .status-pill.connected { border-color: rgba(34,197,94,0.3); color: var(--green); }
+    .status-pill.error     { border-color: rgba(239,68,68,0.3);  color: var(--red);   }
+
+    .sdot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    .sdot.pulse { animation: sdotPulse 2.2s ease infinite; }
+
+    @keyframes sdotPulse {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%      { opacity:.45; transform:scale(.8); }
+    }
+
+    /* ── Main layout ── */
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 24px 48px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .span2 { grid-column: span 2; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 24px;
+      transition: border-color var(--tr), background var(--tr);
+    }
+
+    .card:hover {
+      border-color: rgba(255,255,255,0.13);
+      background: var(--bg-card-h);
+    }
+
+    .card-hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+    }
+
+    .card-sub {
+      font-size: 11px;
+      color: var(--dim);
+    }
+
+    /* Badges */
+    .badge {
+      padding: 4px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .bg  { background:rgba(34,197,94,.11);  border-color:rgba(34,197,94,.2);   color:var(--green);  }
+    .by  { background:rgba(245,158,11,.11); border-color:rgba(245,158,11,.2);  color:var(--yellow); }
+    .br  { background:rgba(239,68,68,.11);  border-color:rgba(239,68,68,.2);   color:var(--red);    }
+    .bb  { background:var(--accent-dim);    border-color:var(--border-a);      color:var(--accent); }
+    .bx  { background:rgba(156,163,175,.1); border-color:rgba(156,163,175,.15);color:var(--muted);  }
+
+    /* ── Gas Price Card ── */
+    .gas-wrap {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .gas-num {
+      font-size: 66px;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -2px;
+      font-variant-numeric: tabular-nums;
+      background: linear-gradient(140deg, #fff 20%, rgba(255,255,255,.65) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      transition: filter .2s;
+    }
+
+    .gas-num.flash { animation: gasFlash .38s ease; }
+
+    @keyframes gasFlash {
+      0%   { filter: brightness(1); }
+      30%  { filter: brightness(2.5) drop-shadow(0 0 12px rgba(0,82,255,.7)); }
+      100% { filter: brightness(1); }
+    }
+
+    .gas-unit {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: .5px;
+    }
+
+    .gas-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 20px;
+      min-height: 20px;
+    }
+
+    .gas-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .btn-copy {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: var(--rs);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--tr);
+    }
+
+    .btn-copy:hover  { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
+    .btn-copy.copied { border-color:var(--green);  color:var(--green);  background:rgba(34,197,94,.1); }
+
+    .upd-ts {
+      font-size: 11px;
+      color: var(--dim);
+    }
+
+    /* ── Block Info Card ── */
+    .block-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .bstat { display: flex; flex-direction: column; gap: 5px; }
+
+    .sl { font-size: 11px; color: var(--dim); font-weight: 500; text-transform: uppercase; letter-spacing: .4px; }
+    .sv {
+      font-size: 20px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      letter-spacing: -.3px;
+    }
+
+    .sv.acc { color: var(--accent); }
+    .sv.grn { color: var(--green); }
+    .sv.red { color: var(--red); }
+    .sv.ylw { color: var(--yellow); }
+
+    /* ── Chart Card ── */
+    .chart-wrap { height: 260px; margin-bottom: 20px; }
+
+    .chart-footer {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .cstat { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .cstat .sl { text-align: center; }
+    .cstat .sv { font-size: 15px; }
+
+    /* ── Calculator Card ── */
+    .presets {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .pbtn {
+      padding: 6px 13px;
+      border-radius: var(--rs);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--tr);
+    }
+
+    .pbtn:hover, .pbtn.on {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .cinput { margin-bottom: 16px; }
+
+    .cinput label {
+      display: block;
+      font-size: 11px;
+      color: var(--dim);
+      font-weight: 600;
+      margin-bottom: 7px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .cinput input {
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: var(--rs);
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      font-size: 16px;
+      font-family: inherit;
+      font-weight: 600;
+      transition: border-color var(--tr);
+    }
+
+    .cinput input:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: rgba(0,82,255,0.05);
+    }
+
+    .cinput input::-webkit-inner-spin-button,
+    .cinput input::-webkit-outer-spin-button { opacity: .4; }
+
+    .cresults { display: flex; flex-direction: column; gap: 10px; }
+
+    .crow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-radius: var(--rs);
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+    }
+
+    .crow .rl { font-size: 13px; color: var(--muted); font-weight: 500; }
+
+    .crv {
+      font-size: 16px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+
+    .crv.big  { font-size: 22px; color: var(--accent); }
+    .crv.sm   { font-size: 13px; color: var(--dim); }
+
+    /* ── Best Time Card ── */
+    .bt-box {
+      padding: 14px 16px;
+      border-radius: var(--rs);
+      background: rgba(0,82,255,0.07);
+      border: 1px solid var(--border-a);
+      margin-bottom: 16px;
+    }
+
+    .bt-lbl  { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+    .bt-val  { font-size: 20px; font-weight: 700; color: var(--text); }
+    .bt-sub  { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    .hbars {
+      display: grid;
+      grid-template-columns: repeat(24, 1fr);
+      gap: 2px;
+      align-items: end;
+    }
+
+    .hbw {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      cursor: default;
+    }
+
+    .hb {
+      width: 100%;
+      border-radius: 2px;
+      min-height: 4px;
+      transition: opacity .15s;
+    }
+
+    .hb:hover { opacity: .75; }
+
+    .hl {
+      font-size: 8px;
+      color: var(--dim);
+      line-height: 1;
+    }
+
+    .empty-msg {
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+      padding: 36px 0 12px;
+    }
+
+    .empty-msg small {
+      display: block;
+      color: var(--dim);
+      font-size: 11px;
+      margin-top: 6px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 20px 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .footer-l { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .footer-links { display: flex; align-items: center; gap: 14px; }
+
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color var(--tr);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .footer-links a:hover { color: var(--text); }
+
+    .bob-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 100px;
+      border: 1px solid var(--border-a);
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all var(--tr);
+    }
+
+    .bob-badge:hover { background: rgba(0,82,255,0.2); }
+
+    .footer-note {
+      max-width: 1200px;
+      margin: 10px auto 0;
+      text-align: center;
+      font-size: 11px;
+      color: var(--dim);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      main { padding: 16px 16px 40px; }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      .span2 { grid-column: span 1; }
+
+      .gas-num  { font-size: 52px; letter-spacing: -1.5px; }
+      .gas-unit { font-size: 16px; }
+
+      .chart-wrap { height: 220px; }
+
+      .chart-footer { grid-template-columns: repeat(2, 1fr); }
+
+      .footer-inner { flex-direction: column; align-items: flex-start; }
+
+      .hbars { grid-template-columns: repeat(24, 1fr); }
+    }
+
+    @media (max-width: 480px) {
+      header { padding: 0 16px; }
+      .brand-text p { display: none; }
+      .gas-num { font-size: 44px; }
+      footer { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════════════════ -->
+<header>
+  <div class="header-inner">
+    <div class="header-brand">
+      <!-- Base Logo -->
+      <svg class="logo" viewBox="0 0 111 111" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="55.5" cy="55.5" r="55.5" fill="#0052FF"/>
+        <path fill-rule="evenodd" clip-rule="evenodd"
+          d="M55.32 92C75.654 92 92.08 75.574 92.08 55.24C92.08 34.906 75.654 18.48
+             55.32 18.48C36.316 18.48 20.706 32.89 18.72 51.386H67.936V59.094H18.72
+             C20.706 77.59 36.316 92 55.32 92Z" fill="white"/>
+      </svg>
+      <div class="brand-text">
+        <h1>Base Gas Tracker</h1>
+        <p>Live gas prices on Base Mainnet</p>
+      </div>
+    </div>
+    <div id="rpcStatus" class="status-pill">
+      <span class="sdot" id="sdot"></span>
+      <span id="statusTxt">Connecting…</span>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════
+     MAIN
+══════════════════════════════════════════════════════ -->
+<main>
+  <div class="grid">
+
+    <!-- ── Gas Price Card ── -->
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">Current Gas Price</span>
+        <span id="statusBadge" class="badge bx">—</span>
+      </div>
+      <div class="gas-wrap">
+        <span id="gasNum" class="gas-num">—</span>
+        <span class="gas-unit">GWEI</span>
+      </div>
+      <div class="gas-sub" id="gasSub">Loading ETH price…</div>
+      <div class="gas-footer">
+        <button id="copyBtn" class="btn-copy" onclick="copyGwei()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="9" y="9" width="13" height="13" rx="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Copy Gwei
+        </button>
+        <span id="updTs" class="upd-ts">—</span>
+      </div>
+    </div>
+
+    <!-- ── Block Info Card ── -->
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">Latest Block</span>
+        <span class="badge bb">Base Mainnet</span>
+      </div>
+      <div class="block-grid">
+        <div class="bstat">
+          <span class="sl">Block Number</span>
+          <span id="blkNum" class="sv acc">—</span>
+        </div>
+        <div class="bstat">
+          <span class="sl">Block Time</span>
+          <span id="blkTime" class="sv">—</span>
+        </div>
+        <div class="bstat">
+          <span class="sl">Base Fee</span>
+          <span id="blkBase" class="sv">—</span>
+        </div>
+        <div class="bstat">
+          <span class="sl">Priority Fee</span>
+          <span id="blkPrio" class="sv">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Chart Card ── -->
+    <div class="card span2">
+      <div class="card-hdr">
+        <span class="card-title">Gas Price History</span>
+        <span id="chartSub" class="card-sub">Loading…</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="gasChart"></canvas>
+      </div>
+      <div class="chart-footer">
+        <div class="cstat">
+          <span class="sl">Min</span>
+          <span id="stMin" class="sv grn">—</span>
+        </div>
+        <div class="cstat">
+          <span class="sl">Max</span>
+          <span id="stMax" class="sv red">—</span>
+        </div>
+        <div class="cstat">
+          <span class="sl">Average</span>
+          <span id="stAvg" class="sv">—</span>
+        </div>
+        <div class="cstat">
+          <span class="sl">Samples</span>
+          <span id="stPts" class="sv acc">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Calculator Card ── -->
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">Transaction Calculator</span>
+      </div>
+      <div class="presets">
+        <button class="pbtn on"  onclick="setPreset(21000,   this)">Transfer</button>
+        <button class="pbtn"     onclick="setPreset(65000,   this)">ERC-20 Transfer</button>
+        <button class="pbtn"     onclick="setPreset(150000,  this)">Uniswap Swap</button>
+        <button class="pbtn"     onclick="setPreset(200000,  this)">NFT Mint</button>
+      </div>
+      <div class="cinput">
+        <label for="gasUnits">Gas Units</label>
+        <input type="number" id="gasUnits" value="21000" min="1" step="1000" oninput="updateCalc()">
+      </div>
+      <div class="cresults">
+        <div class="crow">
+          <span class="rl">ETH Cost</span>
+          <span id="costEth" class="crv">—</span>
+        </div>
+        <div class="crow">
+          <span class="rl">USD Cost</span>
+          <span id="costUsd" class="crv big">—</span>
+        </div>
+        <div class="crow">
+          <span class="rl">Gas Price Used</span>
+          <span id="costGp" class="crv sm">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Best Time Card ── -->
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">Best Time to Transact</span>
+        <span id="dataAge" class="card-sub">—</span>
+      </div>
+      <div id="btContent">
+        <div class="empty-msg">
+          Building data history…
+          <small>Collecting blocks to build hourly analysis</small>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /grid -->
+</main>
+
+<!-- ══════════════════════════════════════════════════════
+     FOOTER
+══════════════════════════════════════════════════════ -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-l">
+      <div class="footer-brand">
+        <svg width="20" height="20" viewBox="0 0 111 111" fill="none">
+          <circle cx="55.5" cy="55.5" r="55.5" fill="#0052FF"/>
+          <path fill-rule="evenodd" clip-rule="evenodd"
+            d="M55.32 92C75.654 92 92.08 75.574 92.08 55.24C92.08 34.906 75.654 18.48
+               55.32 18.48C36.316 18.48 20.706 32.89 18.72 51.386H67.936V59.094H18.72
+               C20.706 77.59 36.316 92 55.32 92Z" fill="white"/>
+        </svg>
+        Base Gas Tracker
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/memosr/base-gas-tracker" target="_blank" rel="noopener noreferrer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+          </svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+    <a href="https://base.org" target="_blank" rel="noopener noreferrer" class="bob-badge">
+      <svg width="13" height="13" viewBox="0 0 111 111" fill="none">
+        <circle cx="55.5" cy="55.5" r="55.5" fill="#0052FF"/>
+        <path fill-rule="evenodd" clip-rule="evenodd"
+          d="M55.32 92C75.654 92 92.08 75.574 92.08 55.24C92.08 34.906 75.654 18.48
+             55.32 18.48C36.316 18.48 20.706 32.89 18.72 51.386H67.936V59.094H18.72
+             C20.706 77.59 36.316 92 55.32 92Z" fill="white"/>
+      </svg>
+      Built on Base
+    </a>
+  </div>
+  <p class="footer-note">
+    Data refreshes every 10 seconds &middot; Public Base RPC endpoints &middot; 1 gwei = 10<sup>9</sup> wei = 10<sup>-9</sup> ETH
+  </p>
+</footer>
+
+<!-- ══════════════════════════════════════════════════════
+     SCRIPT
+══════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ── Config ────────────────────────────────────────────────
+const RPCS = [
+  'https://base.llamarpc.com',
+  'https://base-rpc.publicnode.com',
+  'https://mainnet.base.org',
+];
+const REFRESH_MS     = 10_000;
+const ETH_PRICE_MS   = 60_000;
+const MAX_HISTORY    = 8_640;   // 24h @ 10s
+const CHART_MAX_PTS  = 300;
+
+// ── State ─────────────────────────────────────────────────
+let provider       = null;
+let rpcIdx         = 0;
+let gasHistory     = [];  // [{ts, gwei, block}]
+let ethPrice       = null;
+let chart          = null;
+let curGwei        = null;
+let curPrioGwei    = null;
+let prevBlkNum     = null;
+let prevBlkTs      = null;
+
+// ── RPC ──────────────────────────────────────────────────
+function rpcName(url) {
+  if (url.includes('llamarpc'))   return 'LlamaRPC';
+  if (url.includes('publicnode')) return 'PublicNode';
+  if (url.includes('base.org'))   return 'Base Official';
+  return 'RPC';
+}
+
+function setStatus(state, text) {
+  const pill = document.getElementById('rpcStatus');
+  const dot  = document.getElementById('sdot');
+  const txt  = document.getElementById('statusTxt');
+  pill.className = 'status-pill ' + state;
+  dot.className  = 'sdot' + (state === 'connected' ? ' pulse' : '');
+  txt.textContent = text;
+}
+
+async function getProvider(bump = false) {
+  if (bump) rpcIdx = (rpcIdx + 1) % RPCS.length;
+  for (let i = 0; i < RPCS.length; i++) {
+    const idx = (rpcIdx + i) % RPCS.length;
+    try {
+      const p = new ethers.JsonRpcProvider(RPCS[idx]);
+      await Promise.race([
+        p.getBlockNumber(),
+        new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 4000)),
+      ]);
+      rpcIdx = idx;
+      provider = p;
+      setStatus('connected', 'Connected · ' + rpcName(RPCS[idx]));
+      return p;
+    } catch (e) {
+      console.warn('RPC fail:', RPCS[idx], e.message);
+    }
+  }
+  setStatus('error', 'All RPCs failed');
+  throw new Error('No RPC available');
+}
+
+// ── Fetch ─────────────────────────────────────────────────
+async function fetchGas() {
+  try {
+    if (!provider) await getProvider();
+
+    const [block, feeData] = await Promise.all([
+      provider.getBlock('latest'),
+      provider.getFeeData(),
+    ]);
+
+    const baseFeeWei = block.baseFeePerGas ?? 0n;
+    const prioWei    = feeData.maxPriorityFeePerGas ?? 0n;
+
+    const baseGwei = parseFloat(ethers.formatUnits(baseFeeWei, 'gwei'));
+    const prioGwei = parseFloat(ethers.formatUnits(prioWei,    'gwei'));
+
+    const now   = Date.now();
+    const blkNo = block.number;
+
+    // Block time estimation
+    let blkTimeSec = null;
+    if (prevBlkNum !== null && blkNo > prevBlkNum) {
+      blkTimeSec = ((now - prevBlkTs) / (blkNo - prevBlkNum) / 1000).toFixed(2);
+    }
+    prevBlkNum = blkNo;
+    prevBlkTs  = now;
+
+    gasHistory.push({ ts: now, gwei: baseGwei, block: blkNo });
+    if (gasHistory.length > MAX_HISTORY) gasHistory = gasHistory.slice(-MAX_HISTORY);
+
+    curGwei     = baseGwei;
+    curPrioGwei = prioGwei;
+
+    renderGasPrice(baseGwei);
+    renderBlockInfo(blkNo, blkTimeSec, baseGwei, prioGwei);
+    renderChart();
+    updateCalc();
+    renderBestTime();
+
+  } catch (e) {
+    console.error('fetchGas:', e);
+    setStatus('error', 'Fetch error — retrying…');
+    await getProvider(true).catch(() => {});
+  }
+}
+
+async function fetchFeeHistory() {
+  try {
+    if (!provider) return;
+
+    const [result, latestBlock] = await Promise.all([
+      provider.send('eth_feeHistory', ['0x400', 'latest', []]),
+      provider.getBlock('latest'),
+    ]);
+
+    const latestTs  = latestBlock.timestamp * 1000;
+    const latestNum = latestBlock.number;
+    const fees      = result.baseFeePerGas;      // length = blocks+1
+    const oldest    = parseInt(result.oldestBlock, 16);
+    const existing  = new Set(gasHistory.map(p => p.block));
+
+    for (let i = 0; i < fees.length - 1; i++) {   // skip last (predicted)
+      const blk = oldest + i;
+      if (existing.has(blk)) continue;
+      const gwei = parseFloat(ethers.formatUnits(BigInt(fees[i]), 'gwei'));
+      const ts   = latestTs - (latestNum - blk) * 2000; // ~2s per block
+      gasHistory.push({ ts, gwei, block: blk });
+    }
+
+    // Sort, deduplicate, trim
+    gasHistory.sort((a, b) => a.block - b.block);
+    gasHistory = gasHistory.filter((p, i) => i === 0 || p.block !== gasHistory[i - 1].block);
+    if (gasHistory.length > MAX_HISTORY) gasHistory = gasHistory.slice(-MAX_HISTORY);
+
+    renderChart();
+    renderBestTime();
+    console.info(`Fee history loaded: ${fees.length - 1} blocks`);
+  } catch (e) {
+    console.warn('fetchFeeHistory:', e.message);
+  }
+}
+
+async function fetchEthPrice() {
+  try {
+    const res  = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+    const data = await res.json();
+    ethPrice = data.ethereum.usd;
+    renderGasSub();
+    updateCalc();
+  } catch (e) {
+    console.warn('ETH price fetch:', e.message);
+  }
+}
+
+// ── Render: Gas Price ─────────────────────────────────────
+function renderGasPrice(gwei) {
+  const el  = document.getElementById('gasNum');
+  const fmt = fmtGwei(gwei);
+
+  if (el.textContent !== fmt) {
+    el.classList.remove('flash');
+    void el.offsetWidth;  // force reflow
+    el.classList.add('flash');
+  }
+  el.textContent = fmt;
+
+  const { label, cls } = gasStatus(gwei);
+  const badge = document.getElementById('statusBadge');
+  badge.textContent = label;
+  badge.className   = 'badge ' + cls;
+
+  document.getElementById('updTs').textContent =
+    'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  renderGasSub();
+}
+
+function renderGasSub() {
+  if (curGwei === null) return;
+  const sub = document.getElementById('gasSub');
+  if (ethPrice) {
+    const xferCost = curGwei * 21000 / 1e9 * ethPrice;
+    sub.textContent = `≈ $${xferCost.toFixed(4)} per ETH transfer · ETH $${ethPrice.toLocaleString()}`;
+  } else {
+    sub.textContent = 'Fetching ETH price…';
+  }
+}
+
+// ── Render: Block Info ────────────────────────────────────
+function renderBlockInfo(blkNo, blkTime, baseFee, prio) {
+  document.getElementById('blkNum').textContent  = blkNo.toLocaleString();
+  document.getElementById('blkTime').textContent = blkTime ? blkTime + 's' : '~2s';
+  document.getElementById('blkBase').textContent = fmtGwei(baseFee) + ' gwei';
+  document.getElementById('blkPrio').textContent = fmtGwei(prio)    + ' gwei';
+}
+
+// ── Render: Chart ─────────────────────────────────────────
+function initChart() {
+  const canvas = document.getElementById('gasChart');
+  const ctx    = canvas.getContext('2d');
+
+  const grad = ctx.createLinearGradient(0, 0, 0, 260);
+  grad.addColorStop(0,   'rgba(0,82,255,0.28)');
+  grad.addColorStop(0.6, 'rgba(0,82,255,0.06)');
+  grad.addColorStop(1,   'rgba(0,82,255,0)');
+
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Base Fee (Gwei)',
+        data: [],
+        borderColor: '#0052FF',
+        backgroundColor: grad,
+        fill: true,
+        tension: 0.35,
+        pointRadius: 0,
+        pointHitRadius: 12,
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { intersect: false, mode: 'index' },
+      scales: {
+        x: {
+          grid:   { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+          ticks:  { color: '#4b5563', maxTicksLimit: 8, font: { size: 11, family: 'Inter' } },
+          border: { display: false },
+        },
+        y: {
+          grid:   { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+          ticks:  {
+            color: '#4b5563',
+            font:  { size: 11, family: 'Inter' },
+            callback: v => {
+              if (v < 0.001) return v.toExponential(1);
+              if (v < 1)     return v.toFixed(4);
+              return v.toFixed(3);
+            },
+          },
+          border: { display: false },
+        },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0d1325',
+          borderColor: 'rgba(0,82,255,0.35)',
+          borderWidth: 1,
+          titleColor: '#9ca3af',
+          bodyColor: '#e8eaed',
+          padding: 10,
+          callbacks: {
+            label: ctx => ' ' + ctx.parsed.y.toFixed(6) + ' gwei',
+          },
+        },
+      },
+    },
+  });
+}
+
+function renderChart() {
+  if (!chart) return;
+
+  const cutoff = Date.now() - 24 * 3600_000;
+  let pts = gasHistory.filter(p => p.ts >= cutoff);
+
+  if (pts.length > CHART_MAX_PTS) {
+    const step = Math.ceil(pts.length / CHART_MAX_PTS);
+    pts = pts.filter((_, i) => i % step === 0 || i === pts.length - 1);
+  }
+
+  chart.data.labels             = pts.map(p =>
+    new Date(p.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  );
+  chart.data.datasets[0].data  = pts.map(p => p.gwei);
+  chart.update('none');
+
+  if (pts.length > 0) {
+    const vals  = pts.map(p => p.gwei);
+    const min   = Math.min(...vals);
+    const max   = Math.max(...vals);
+    const avg   = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const total = gasHistory.filter(p => p.ts >= cutoff).length;
+
+    document.getElementById('stMin').textContent = fmtGwei(min) + ' gwei';
+    document.getElementById('stMax').textContent = fmtGwei(max) + ' gwei';
+    document.getElementById('stAvg').textContent = fmtGwei(avg) + ' gwei';
+    document.getElementById('stPts').textContent = total.toLocaleString();
+
+    const spanMs = pts[pts.length - 1].ts - pts[0].ts;
+    const spanH  = spanMs / 3_600_000;
+    document.getElementById('chartSub').textContent =
+      spanH >= 1
+        ? `Last ${spanH.toFixed(1)}h · ${total} samples`
+        : `Last ${Math.round(spanMs / 60_000)}m · ${total} samples`;
+  }
+}
+
+// ── Render: Calculator ────────────────────────────────────
+function updateCalc() {
+  const units = parseInt(document.getElementById('gasUnits').value) || 21000;
+
+  if (curGwei === null) {
+    ['costEth','costUsd','costGp'].forEach(id =>
+      document.getElementById(id).textContent = '—'
+    );
+    return;
+  }
+
+  const totalGwei = curGwei + Math.max(curPrioGwei || 0, 0.001);
+  const costEth   = totalGwei * units / 1e9;
+  const costUsd   = ethPrice ? costEth * ethPrice : null;
+
+  document.getElementById('costEth').textContent =
+    costEth < 1e-6
+      ? costEth.toExponential(3) + ' ETH'
+      : costEth.toFixed(8) + ' ETH';
+
+  document.getElementById('costUsd').textContent = costUsd !== null
+    ? (costUsd < 0.0001 ? '$' + costUsd.toExponential(3) : '$' + costUsd.toFixed(costUsd < 0.01 ? 6 : 4))
+    : 'Price loading…';
+
+  document.getElementById('costGp').textContent =
+    fmtGwei(totalGwei) + ' gwei (base + priority)';
+}
+
+// ── Render: Best Time ─────────────────────────────────────
+function renderBestTime() {
+  const content = document.getElementById('btContent');
+  const cutoff  = Date.now() - 24 * 3600_000;
+  const recent  = gasHistory.filter(p => p.ts >= cutoff);
+
+  if (recent.length < 30) {
+    document.getElementById('dataAge').textContent = recent.length + ' pts';
+    content.innerHTML = `
+      <div class="empty-msg">
+        Building data history… (${recent.length} / 30 min)
+        <small>Need at least 30 data points for hourly analysis</small>
+      </div>`;
+    return;
+  }
+
+  // Group by local hour
+  const byHour = {};
+  for (const p of recent) {
+    const h = new Date(p.ts).getHours();
+    (byHour[h] = byHour[h] || []).push(p.gwei);
+  }
+
+  const hourAvg = Object.fromEntries(
+    Object.entries(byHour).map(([h, vals]) => [
+      h,
+      vals.reduce((a, b) => a + b, 0) / vals.length,
+    ])
+  );
+
+  const hours    = Object.keys(hourAvg).map(Number);
+  const bestH    = hours.reduce((a, b) => hourAvg[a] < hourAvg[b] ? a : b);
+  const worstH   = hours.reduce((a, b) => hourAvg[a] > hourAvg[b] ? a : b);
+  const bestAvg  = hourAvg[bestH];
+  const worstAvg = hourAvg[worstH];
+  const savings  = worstAvg > 0 ? Math.round((1 - bestAvg / worstAvg) * 100) : 0;
+
+  const fmtH = h => {
+    const d = new Date(); d.setHours(h, 0, 0, 0);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const minAvg   = bestAvg;
+  const maxAvg   = worstAvg;
+  const range    = maxAvg - minAvg || 1;
+  const spanMs   = Date.now() - Math.min(...recent.map(p => p.ts));
+  const spanH    = Math.round(spanMs / 3_600_000);
+
+  document.getElementById('dataAge').textContent =
+    spanH < 1 ? '< 1h data' : spanH + 'h data';
+
+  let bars = '<div class="hbars">';
+  for (let h = 0; h < 24; h++) {
+    const avg  = hourAvg[h];
+    const lbl  = h % 6 === 0 ? h.toString() : '';
+    if (avg !== undefined) {
+      const ratio  = (avg - minAvg) / range;
+      const height = Math.max(6, Math.round(ratio * 56) + 6);
+      const r = Math.round(34  + (239 - 34)  * ratio);
+      const g = Math.round(197 + (68  - 197) * ratio);
+      const b = Math.round(94  + (68  - 94)  * ratio);
+      const col   = `rgb(${r},${g},${b})`;
+      const glow  = h === bestH ? `box-shadow:0 0 6px ${col};` : '';
+      bars += `
+        <div class="hbw" title="${fmtH(h)} · ${fmtGwei(avg)} gwei">
+          <div class="hb" style="height:${height}px;background:${col};${glow}"></div>
+          <span class="hl">${lbl}</span>
+        </div>`;
+    } else {
+      bars += `
+        <div class="hbw" title="${fmtH(h)} · no data">
+          <div class="hb" style="height:4px;background:rgba(255,255,255,0.07)"></div>
+          <span class="hl">${lbl}</span>
+        </div>`;
+    }
+  }
+  bars += '</div>';
+
+  content.innerHTML = `
+    <div class="bt-box">
+      <div class="bt-lbl">Cheapest hour in last ${spanH || '<1'}h</div>
+      <div class="bt-val">${fmtH(bestH)} — ${fmtH((bestH + 1) % 24)}</div>
+      <div class="bt-sub">
+        Avg ${fmtGwei(bestAvg)} gwei
+        ${savings > 0 ? '· ~' + savings + '% cheaper than peak' : ''}
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--dim);margin-bottom:6px;">Hourly avg gas · green = cheap · red = expensive (hover for details)</div>
+    ${bars}`;
+}
+
+// ── Controls ──────────────────────────────────────────────
+function setPreset(units, btn) {
+  document.getElementById('gasUnits').value = units;
+  document.querySelectorAll('.pbtn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  updateCalc();
+}
+
+function copyGwei() {
+  if (curGwei === null) return;
+  const val = fmtGwei(curGwei);
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = document.getElementById('copyBtn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+      Copied!`;
+    btn.classList.add('copied');
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('copied'); }, 2000);
+  }).catch(() => {});
+}
+
+// ── Helpers ───────────────────────────────────────────────
+function fmtGwei(v) {
+  if (v == null) return '—';
+  if (v < 0.0001) return v.toExponential(2);
+  if (v < 0.001)  return v.toFixed(6);
+  if (v < 0.01)   return v.toFixed(5);
+  if (v < 1)      return v.toFixed(4);
+  return v.toFixed(3);
+}
+
+function gasStatus(gwei) {
+  if (gwei < 0.01) return { label: '🟢 Cheap',  cls: 'bg' };
+  if (gwei < 0.05) return { label: '🟡 Normal', cls: 'by' };
+  return              { label: '🔴 High',   cls: 'br' };
+}
+
+// ── Init ──────────────────────────────────────────────────
+async function init() {
+  initChart();
+
+  fetchEthPrice();
+  setInterval(fetchEthPrice, ETH_PRICE_MS);
+
+  try {
+    await getProvider();
+    fetchFeeHistory();           // background, non-blocking
+    await fetchGas();
+    setInterval(fetchGas, REFRESH_MS);
+  } catch (e) {
+    console.error('Init error:', e);
+    setStatus('error', 'Connection failed');
+  }
+}
+
+init();
+</script>
+</body>
+</html>
