@@ -16,7 +16,7 @@
     "primaryCategory": "developer-tools",
     "tags": ["gas", "base", "developer", "tools", "analytics"],
     "heroImageUrl": "https://base-gas-tracker-lyart.vercel.app/hero.png",
-    "tagline": "Know Base gas before you transact",
+    "tagline": "Live Base gas, anytime",
     "ogTitle": "Base Gas Tracker",
     "ogDescription": "Real-time gas tracker for Base mainnet",
     "ogImageUrl": "https://base-gas-tracker-lyart.vercel.app/og.png"
