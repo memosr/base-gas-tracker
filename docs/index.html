@@ -6,6 +6,8 @@
   <title>Base Gas Tracker — Live Gas Prices</title>
   <meta name="description" content="Real-time gas price tracker for Base L2. Monitor fees, calculate transaction costs, and find the best time to transact.">
   <meta name="talentapp:project_verification" content="02e14258ec31cd8ac80cead3ac212139f356953e7cae0bf66e07976cd0ea3598d372e49ecbe67fef1ba6d176ff34e51d07234ad3da267b90e2fb6d876cdad670">
+  <meta property="fc:miniapp" content='{"version":"1","imageUrl":"https://base-gas-tracker-lyart.vercel.app/og.png","button":{"title":"Check Gas","action":{"type":"launch_miniapp","name":"Base Gas Tracker","url":"https://base-gas-tracker-lyart.vercel.app/","splashImageUrl":"https://base-gas-tracker-lyart.vercel.app/splash.png","splashBackgroundColor":"#0a0e1a"}}}' />
+  <meta property="fc:frame" content='{"version":"1","imageUrl":"https://base-gas-tracker-lyart.vercel.app/og.png","button":{"title":"Check Gas","action":{"type":"launch_miniapp","name":"Base Gas Tracker","url":"https://base-gas-tracker-lyart.vercel.app/","splashImageUrl":"https://base-gas-tracker-lyart.vercel.app/splash.png","splashBackgroundColor":"#0a0e1a"}}}' />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -1237,6 +1239,16 @@ async function init() {
 }
 
 init();
+</script>
+<script type="module">
+  try {
+    const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk');
+    window.addEventListener('load', () => {
+      sdk.actions.ready().catch(() => {});
+    });
+  } catch (e) {
+    // Running outside Mini App context — ignore
+  }
 </script>
 </body>
 </html>

@@ -1,0 +1,24 @@
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "Base Gas Tracker",
+    "iconUrl": "https://base-gas-tracker-lyart.vercel.app/icon.png",
+    "homeUrl": "https://base-gas-tracker-lyart.vercel.app/",
+    "splashImageUrl": "https://base-gas-tracker-lyart.vercel.app/splash.png",
+    "splashBackgroundColor": "#0a0e1a",
+    "subtitle": "Real-time Base gas prices",
+    "description": "Live gas tracker for Base mainnet. 24h price chart, TX cost calculator with presets (transfer, swap, mint), and best time to transact analysis.",
+    "primaryCategory": "developer-tools",
+    "tags": ["gas", "base", "developer", "tools", "analytics"],
+    "heroImageUrl": "https://base-gas-tracker-lyart.vercel.app/hero.png",
+    "tagline": "Know Base gas before you transact",
+    "ogTitle": "Base Gas Tracker",
+    "ogDescription": "Real-time gas tracker for Base mainnet",
+    "ogImageUrl": "https://base-gas-tracker-lyart.vercel.app/og.png"
+  }
+}
