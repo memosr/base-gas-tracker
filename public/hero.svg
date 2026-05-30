@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg-h" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0e1a"/>
+      <stop offset="60%" stop-color="#0b1020"/>
+      <stop offset="100%" stop-color="#0a0e1a"/>
+    </linearGradient>
+    <linearGradient id="chart-line" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0052FF" stop-opacity="0"/>
+      <stop offset="20%" stop-color="#0052FF"/>
+      <stop offset="80%" stop-color="#0052FF"/>
+      <stop offset="100%" stop-color="#0052FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="chart-fill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0052FF" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#0052FF" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="accent-glow" cx="35%" cy="50%" r="40%">
+      <stop offset="0%" stop-color="#0052FF" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#0052FF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="text-glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg-h)"/>
+
+  <!-- Subtle grid lines -->
+  <g opacity="0.06" stroke="#ffffff" stroke-width="1">
+    <line x1="0" y1="126" x2="1200" y2="126"/>
+    <line x1="0" y1="252" x2="1200" y2="252"/>
+    <line x1="0" y1="378" x2="1200" y2="378"/>
+    <line x1="0" y1="504" x2="1200" y2="504"/>
+    <line x1="200" y1="0" x2="200" y2="630"/>
+    <line x1="400" y1="0" x2="400" y2="630"/>
+    <line x1="600" y1="0" x2="600" y2="630"/>
+    <line x1="800" y1="0" x2="800" y2="630"/>
+    <line x1="1000" y1="0" x2="1000" y2="630"/>
+  </g>
+
+  <!-- Accent glow -->
+  <rect width="1200" height="630" fill="url(#accent-glow)"/>
+
+  <!-- Chart graphic (right side) -->
+  <g transform="translate(650, 80)">
+    <!-- Chart area fill -->
+    <path d="M 0 340 L 0 240 Q 40 200 80 220 Q 120 240 160 180 Q 200 120 240 140 Q 280 160 320 100 Q 360 40 400 60 Q 440 80 480 50 L 500 340 Z"
+          fill="url(#chart-fill)"/>
+    <!-- Chart line -->
+    <path d="M 0 240 Q 40 200 80 220 Q 120 240 160 180 Q 200 120 240 140 Q 280 160 320 100 Q 360 40 400 60 Q 440 80 480 50"
+          stroke="url(#chart-line)" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Data point highlight -->
+    <circle cx="480" cy="50" r="7" fill="#0052FF"/>
+    <circle cx="480" cy="50" r="14" fill="#0052FF" opacity="0.2"/>
+    <!-- Y-axis labels (faint) -->
+    <text x="-30" y="244" font-family="Arial" font-size="16" fill="#4b5563" text-anchor="end">0.5</text>
+    <text x="-30" y="184" font-family="Arial" font-size="16" fill="#4b5563" text-anchor="end">1.0</text>
+    <text x="-30" y="124" font-family="Arial" font-size="16" fill="#4b5563" text-anchor="end">1.5</text>
+    <text x="-30" y="64" font-family="Arial" font-size="16" fill="#4b5563" text-anchor="end">2.0</text>
+    <!-- X-axis label -->
+    <text x="240" y="380" font-family="Arial" font-size="14" fill="#4b5563" text-anchor="middle">24-hour gas history (Gwei)</text>
+  </g>
+
+  <!-- Left side: Text content -->
+  <!-- Gas pump icon (small) -->
+  <g transform="translate(80, 120)">
+    <rect x="0" y="0" width="60" height="80" rx="8" fill="#0052FF" opacity="0.9"/>
+    <rect x="5" y="8" width="50" height="28" rx="4" fill="#0a0e1a" opacity="0.8"/>
+    <rect x="9" y="13" width="20" height="4" rx="2" fill="#0052FF"/>
+    <rect x="9" y="20" width="30" height="4" rx="2" fill="#0052FF" opacity="0.6"/>
+    <rect x="9" y="27" width="15" height="4" rx="2" fill="#0052FF" opacity="0.4"/>
+    <rect x="60" y="10" width="12" height="26" rx="6" fill="#0052FF" opacity="0.8"/>
+    <rect x="48" y="32" width="26" height="10" rx="5" fill="#0039cc"/>
+    <path d="M 62 38 Q 80 52 72 72" stroke="#1a6bff" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <circle cx="44" cy="54" r="7" fill="#22c55e"/>
+    <rect x="-4" y="80" width="70" height="12" rx="4" fill="#0039cc" opacity="0.8"/>
+  </g>
+
+  <!-- Title -->
+  <text x="80" y="295" font-family="Arial, sans-serif" font-weight="800" font-size="72" fill="#e8eaed" filter="url(#text-glow)">Base Gas</text>
+  <text x="80" y="375" font-family="Arial, sans-serif" font-weight="800" font-size="72" fill="#0052FF">Tracker</text>
+
+  <!-- Tagline -->
+  <text x="80" y="430" font-family="Arial, sans-serif" font-weight="400" font-size="26" fill="#9ca3af">Real-time gas prices on Base</text>
+
+  <!-- Stats row -->
+  <g transform="translate(80, 480)">
+    <!-- Live indicator -->
+    <circle cx="8" cy="14" r="6" fill="#22c55e"/>
+    <circle cx="8" cy="14" r="12" fill="#22c55e" opacity="0.2"/>
+    <text x="28" y="20" font-family="Arial, sans-serif" font-size="18" fill="#22c55e" font-weight="600">Live</text>
+    <text x="90" y="20" font-family="Arial, sans-serif" font-size="18" fill="#4b5563">·</text>
+    <text x="106" y="20" font-family="Arial, sans-serif" font-size="18" fill="#9ca3af">24h Chart</text>
+    <text x="220" y="20" font-family="Arial, sans-serif" font-size="18" fill="#4b5563">·</text>
+    <text x="236" y="20" font-family="Arial, sans-serif" font-size="18" fill="#9ca3af">TX Calculator</text>
+    <text x="390" y="20" font-family="Arial, sans-serif" font-size="18" fill="#4b5563">·</text>
+    <text x="406" y="20" font-family="Arial, sans-serif" font-size="18" fill="#9ca3af">Best Time Analysis</text>
+  </g>
+
+  <!-- Bottom border accent -->
+  <rect x="0" y="622" width="1200" height="8" fill="#0052FF" opacity="0.6" rx="0"/>
+</svg>

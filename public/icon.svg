@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <radialGradient id="bg-grad" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#0d1526"/>
+      <stop offset="100%" stop-color="#0a0e1a"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0052FF" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#0052FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="pump-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1a6bff"/>
+      <stop offset="100%" stop-color="#0039cc"/>
+    </linearGradient>
+    <filter id="drop-shadow">
+      <feDropShadow dx="0" dy="8" stdDeviation="24" flood-color="#0052FF" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="120" fill="url(#bg-grad)"/>
+
+  <!-- Glow halo behind icon -->
+  <ellipse cx="512" cy="510" rx="320" ry="320" fill="url(#glow)"/>
+
+  <!-- Gas pump body -->
+  <g filter="url(#drop-shadow)" transform="translate(512,512)">
+    <!-- Main pump body -->
+    <rect x="-120" y="-180" width="200" height="300" rx="20" fill="url(#pump-grad)"/>
+    <!-- Screen panel -->
+    <rect x="-100" y="-160" width="160" height="90" rx="10" fill="#0a0e1a" opacity="0.8"/>
+    <!-- Screen lines (gas reading) -->
+    <rect x="-85" y="-148" width="80" height="10" rx="4" fill="#0052FF" opacity="0.9"/>
+    <rect x="-85" y="-130" width="110" height="10" rx="4" fill="#0052FF" opacity="0.6"/>
+    <rect x="-85" y="-112" width="60" height="10" rx="4" fill="#0052FF" opacity="0.4"/>
+    <!-- Pump nozzle arm -->
+    <rect x="80" y="-140" width="18" height="80" rx="9" fill="url(#pump-grad)"/>
+    <!-- Nozzle head -->
+    <rect x="60" y="-70" width="60" height="28" rx="14" fill="#0039cc"/>
+    <!-- Hose curve -->
+    <path d="M 80 -60 Q 130 -20 110 40" stroke="#1a6bff" stroke-width="16" fill="none" stroke-linecap="round"/>
+    <!-- Base/stand -->
+    <rect x="-130" y="120" width="220" height="30" rx="10" fill="#0039cc"/>
+    <!-- Fuel indicator dot -->
+    <circle cx="40" cy="-30" r="14" fill="#22c55e"/>
+  </g>
+
+  <!-- Corner Base mark -->
+  <text x="512" y="820" font-family="Arial, sans-serif" font-weight="800" font-size="72" fill="#0052FF" opacity="0.7" text-anchor="middle">BASE</text>
+</svg>
